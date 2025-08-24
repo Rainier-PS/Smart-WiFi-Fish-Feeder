@@ -4,46 +4,45 @@
 #include <ESP32Servo.h>
 #include "time.h"
 
-// WiFi credentials
-const char* ssid = "X";
-const char* password = "87654321";
+// --- WiFi setup ---
+// Replace with your Wi-Fi network credentials
+const char* ssid = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
 
-// Telegram Bot
-const char* botToken = "7591289842:AAFtU-T9A_pCzDHJULjNJl_wlx-WeSwqtl0";
+// --- Telegram Bot setup ---
+// Replace with your own bot token from BotFather
+const char* botToken = "YOUR_TELEGRAM_BOT_TOKEN";
 WiFiClientSecure client;
 UniversalTelegramBot bot(botToken, client);
 
-// Authorized Users (hardcoded)
+// --- Authorized Users ---
+// Only these Telegram chat IDs can control the feeder
 unsigned long long authorizedUsers[] = {
-  7507470797, // Rainier (Admin)
-  1344632166, // Johan
-  1013637114, // Devi
-  7067919973, // Xavier
-  5555555555  // Extra
+  1234567890 // Replace with your own Telegram ID
 };
 const int userCount = sizeof(authorizedUsers) / sizeof(authorizedUsers[0]);
 
-// Servo config
+// --- Servo configuration ---
 #define SERVO_PIN 13
 Servo feederServo;
-int feedCount = 0;
+int feedCount = 0; // Total portions fed since startup
 
-// Time sync
+// --- Time sync ---
 unsigned long lastCheck = 0;
-const unsigned long checkInterval = 2000;
+const unsigned long checkInterval = 2000; // Interval to check messages and timers (ms)
 
-// Scheduled feeding
+// --- Scheduled feeding ---
 bool hasSchedule = false;
 int scheduleHour = 0, scheduleMinute = 0;
 int schedulePortions = 1;
 bool scheduleTriggeredToday = false;
 
-// Countdown feeding
+// --- Countdown feeding ---
 bool hasCountdown = false;
 unsigned long countdownTargetMillis = 0;
 int countdownPortions = 1;
 
-// Authorization check
+// --- Check if user is authorized ---
 bool isAuthorized(unsigned long long chat_id) {
   for (int i = 0; i < userCount; i++) {
     if (chat_id == authorizedUsers[i]) return true;
@@ -51,18 +50,18 @@ bool isAuthorized(unsigned long long chat_id) {
   return false;
 }
 
-// Feed the fish
+// --- Activate the feeder servo ---
 void feedFish(int times) {
   for (int i = 0; i < times; i++) {
-    feederServo.write(90);
-    delay(1000);
-    feederServo.write(0);
+    feederServo.write(90); // Move servo to release food
+    delay(1000);           // Wait a bit for food to drop
+    feederServo.write(0);  // Reset servo
     delay(500);
   }
   feedCount += times;
 }
 
-// Handle Telegram commands
+// --- Handle incoming Telegram messages ---
 void handleNewMessages(int numNewMessages) {
   for (int i = 0; i < numNewMessages; i++) {
     String chat_id_str = bot.messages[i].chat_id;
@@ -70,7 +69,7 @@ void handleNewMessages(int numNewMessages) {
     String text = bot.messages[i].text;
 
     if (!isAuthorized(chat_id)) {
-      bot.sendMessage(chat_id_str, "🚫 Unauthorized user.", "");
+      bot.sendMessage(chat_id_str, "🚫 You are not authorized to use this bot.", "");
       continue;
     }
 
@@ -93,14 +92,14 @@ void handleNewMessages(int numNewMessages) {
 
     else if (text == "/status") {
       String msg = "📡 WiFi: " + WiFi.SSID() + "\n";
-      msg += "🍽 Portions since startup: " + String(feedCount);
+      msg += "🍽 Portions fed since startup: " + String(feedCount);
       if (hasSchedule) {
         msg += "\n📅 Schedule: " + String(scheduleHour) + ":" + (scheduleMinute < 10 ? "0" : "") + String(scheduleMinute);
-        msg += " (" + String(schedulePortions) + " portions)";
+        msg += " (" + String(schedulePortions) + " portion(s))";
       }
       if (hasCountdown) {
         long remaining = (countdownTargetMillis - millis()) / 1000;
-        msg += "\n⏳ Countdown: " + String(max(0L, remaining)) + "s left (" + String(countdownPortions) + " portions)";
+        msg += "\n⏳ Countdown: " + String(max(0L, remaining)) + "s remaining (" + String(countdownPortions) + " portion(s))";
       }
       bot.sendMessage(chat_id_str, msg, "");
     }
@@ -168,7 +167,7 @@ void handleNewMessages(int numNewMessages) {
           scheduleTriggeredToday = false;
           bot.sendMessage(chat_id_str, "📅 Daily feed set: " + String(h) + ":" + (m < 10 ? "0" : "") + String(m) + ", " + String(portions) + " portion(s).", "");
         } else {
-          bot.sendMessage(chat_id_str, "⚠️ Invalid time/portions. Format: /schedule HH:MM [1–5]", "");
+          bot.sendMessage(chat_id_str, "⚠️ Invalid time or portions. Format: /schedule HH:MM [1–5]", "");
         }
       } else {
         bot.sendMessage(chat_id_str, "⚠️ Format: /schedule HH:MM [P]\nExample: /schedule 08:30 3", "");
@@ -176,40 +175,42 @@ void handleNewMessages(int numNewMessages) {
     }
 
     else {
-      bot.sendMessage(chat_id_str, "❓ Unknown command. Use /help to see commands.", "");
+      bot.sendMessage(chat_id_str, "❓ Unknown command. Type /help to see available commands.", "");
     }
   }
 }
 
-// Sync time via NTP
+// --- Set up NTP time ---
 void setupTime() {
   configTime(25200, 0, "pool.ntp.org", "time.nist.gov");  // UTC+7
   struct tm timeinfo;
   while (!getLocalTime(&timeinfo)) {
-    Serial.println("⌛ Waiting for NTP...");
+    Serial.println("⌛ Waiting for NTP server...");
     delay(1000);
   }
-  Serial.println("✅ Time synchronized");
+  Serial.println("✅ Time synced successfully");
 }
 
+// --- Initial setup ---
 void setup() {
   Serial.begin(115200);
   feederServo.attach(SERVO_PIN);
-  feederServo.write(0);
+  feederServo.write(0); // Start with servo in resting position
 
   WiFi.begin(ssid, password);
-  Serial.print("Connecting to WiFi");
+  Serial.print("Connecting to Wi-Fi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
-  Serial.println("\n✅ WiFi connected: " + WiFi.localIP().toString());
+  Serial.println("\n✅ Connected to Wi-Fi: " + WiFi.localIP().toString());
 
-  client.setInsecure();
+  client.setInsecure(); // For HTTPS connections (Telegram)
   setupTime();
-  bot.sendMessage(String(authorizedUsers[0]), "🐟 Fish Feeder is ONLINE", "");
+  // bot.sendMessage(String(authorizedUsers[0]), "🐟 Fish Feeder is ONLINE", ""); // Optional
 }
 
+// --- Main loop ---
 void loop() {
   if (millis() - lastCheck > checkInterval) {
     int newMessages = bot.getUpdates(bot.last_message_received + 1);
@@ -217,13 +218,13 @@ void loop() {
       handleNewMessages(newMessages);
     }
 
-    // Countdown feeding
+    // Handle countdown feed
     if (hasCountdown && millis() >= countdownTargetMillis) {
       feedFish(countdownPortions);
       hasCountdown = false;
     }
 
-    // Scheduled feeding (once per day)
+    // Handle scheduled feed once per day
     if (hasSchedule) {
       struct tm timeinfo;
       if (getLocalTime(&timeinfo)) {
