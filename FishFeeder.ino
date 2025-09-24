@@ -4,45 +4,37 @@
 #include <ESP32Servo.h>
 #include "time.h"
 
-// --- WiFi setup ---
 // Replace with your Wi-Fi network credentials
 const char* ssid = "YOUR_WIFI_SSID";
 const char* password = "YOUR_WIFI_PASSWORD";
 
-// --- Telegram Bot setup ---
 // Replace with your own bot token from BotFather
 const char* botToken = "YOUR_TELEGRAM_BOT_TOKEN";
 WiFiClientSecure client;
 UniversalTelegramBot bot(botToken, client);
 
-// --- Authorized Users ---
-// Only these Telegram chat IDs can control the feeder
+// Authorized Users
 unsigned long long authorizedUsers[] = {
   1234567890 // Replace with your own Telegram ID
 };
 const int userCount = sizeof(authorizedUsers) / sizeof(authorizedUsers[0]);
 
-// --- Servo configuration ---
 #define SERVO_PIN 13
 Servo feederServo;
-int feedCount = 0; // Total portions fed since startup
+int feedCount = 0;
 
-// --- Time sync ---
 unsigned long lastCheck = 0;
 const unsigned long checkInterval = 2000; // Interval to check messages and timers (ms)
 
-// --- Scheduled feeding ---
 bool hasSchedule = false;
 int scheduleHour = 0, scheduleMinute = 0;
 int schedulePortions = 1;
 bool scheduleTriggeredToday = false;
 
-// --- Countdown feeding ---
 bool hasCountdown = false;
 unsigned long countdownTargetMillis = 0;
 int countdownPortions = 1;
 
-// --- Check if user is authorized ---
 bool isAuthorized(unsigned long long chat_id) {
   for (int i = 0; i < userCount; i++) {
     if (chat_id == authorizedUsers[i]) return true;
@@ -50,7 +42,6 @@ bool isAuthorized(unsigned long long chat_id) {
   return false;
 }
 
-// --- Activate the feeder servo ---
 void feedFish(int times) {
   for (int i = 0; i < times; i++) {
     feederServo.write(90); // Move servo to release food
@@ -191,7 +182,6 @@ void setupTime() {
   Serial.println("✅ Time synced successfully");
 }
 
-// --- Initial setup ---
 void setup() {
   Serial.begin(115200);
   feederServo.attach(SERVO_PIN);
@@ -207,10 +197,8 @@ void setup() {
 
   client.setInsecure(); // For HTTPS connections (Telegram)
   setupTime();
-  // bot.sendMessage(String(authorizedUsers[0]), "🐟 Fish Feeder is ONLINE", ""); // Optional
 }
 
-// --- Main loop ---
 void loop() {
   if (millis() - lastCheck > checkInterval) {
     int newMessages = bot.getUpdates(bot.last_message_received + 1);
@@ -218,13 +206,11 @@ void loop() {
       handleNewMessages(newMessages);
     }
 
-    // Handle countdown feed
     if (hasCountdown && millis() >= countdownTargetMillis) {
       feedFish(countdownPortions);
       hasCountdown = false;
     }
 
-    // Handle scheduled feed once per day
     if (hasSchedule) {
       struct tm timeinfo;
       if (getLocalTime(&timeinfo)) {
