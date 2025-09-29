@@ -41,6 +41,11 @@ A smart Wi-Fi fish feeder built with an ESP32 development board and an SG90 serv
 5. Upload the code to your ESP32.
 6. After boot, the ESP32 will connect to Wi-Fi, synchronize time with NTP, and notify the first authorized user that the feeder is online.
 
+## Build Guide
+
+For a beginner-friendly, step-by-step tutorial with pictures and detailed explanations, check out the full build guide on Instructables:  
+👉 [Smart Wi-Fi Fish Feeder on Instructables](https://www.instructables.com/Smart-WiFi-Fish-Feeder/)
+
 ## Telegram Commands
 
 ### General
