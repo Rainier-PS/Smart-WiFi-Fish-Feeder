@@ -44,15 +44,15 @@ bool isAuthorized(unsigned long long chat_id) {
 
 void feedFish(int times) {
   for (int i = 0; i < times; i++) {
-    feederServo.write(90); // Move servo to release food
-    delay(1000);           // Wait a bit for food to drop
-    feederServo.write(0);  // Reset servo
+    feederServo.write(90);
+    delay(1000);
+    feederServo.write(0);
     delay(500);
   }
   feedCount += times;
 }
 
-// --- Handle incoming Telegram messages ---
+// Handle incoming Telegram messages
 void handleNewMessages(int numNewMessages) {
   for (int i = 0; i < numNewMessages; i++) {
     String chat_id_str = bot.messages[i].chat_id;
@@ -171,7 +171,7 @@ void handleNewMessages(int numNewMessages) {
   }
 }
 
-// --- Set up NTP time ---
+// Set up NTP time
 void setupTime() {
   configTime(25200, 0, "pool.ntp.org", "time.nist.gov");  // UTC+7
   struct tm timeinfo;
@@ -185,7 +185,7 @@ void setupTime() {
 void setup() {
   Serial.begin(115200);
   feederServo.attach(SERVO_PIN);
-  feederServo.write(0); // Start with servo in resting position
+  feederServo.write(0);
 
   WiFi.begin(ssid, password);
   Serial.print("Connecting to Wi-Fi");
@@ -195,7 +195,7 @@ void setup() {
   }
   Serial.println("\n✅ Connected to Wi-Fi: " + WiFi.localIP().toString());
 
-  client.setInsecure(); // For HTTPS connections (Telegram)
+  client.setInsecure();
   setupTime();
 }
 
